@@ -24,7 +24,7 @@ prototype(Neos.Neos:PrimaryContent).blogPost {
 }
 
 #
-# Blog Post is rendered by a Template-based TypoScript object which contains some
+# Blog Post is rendered by a Template-based Fusion object which contains some
 # properties on its own (title, ...) and renders sub nodes contained in two
 # separate sections, namely "main" for the actual post content and "comments" for
 # the comment nodes.
@@ -34,12 +34,12 @@ prototype(Neos.Neos:PrimaryContent).blogPost {
 # usage of ContentCollection.
 #
 # The blog post comments are just several Text nodes which are as well rendered
-# through the TypoScript collection feature.
+# through the Fusion collection feature.
 #
 prototype(RobertLemke.Plugin.Blog:Post) < prototype(Neos.Neos:Content) {
 	node = ${node}
 
-	# Render the main ContentCollection of the Post like a page would
+	# Render the main ContentCollection of the Post
 	main = Neos.Neos:ContentCollection {
 		nodePath = 'main'
 	}
@@ -66,10 +66,9 @@ prototype(RobertLemke.Plugin.Blog:Post) < prototype(Neos.Neos:Content) {
 }
 
 #
-# Blog Comment is rendered by a vanilla Template-based TypoScript object
+# Blog Comment is rendered by a vanilla Template-based Fusion object
 #
-prototype(RobertLemke.Plugin.Blog:Comment) {
-}
+prototype(RobertLemke.Plugin.Blog:Comment) < prototype(Neos.Neos:Content)
 
 #
 # List of most recent blog posts, including pagination
@@ -111,5 +110,4 @@ prototype(RobertLemke.Plugin.Blog:Feed) < prototype(Neos.Neos:Plugin) {
 #
 # Quote is a straight-forward content type
 #
-prototype(RobertLemke.Plugin.Blog:Quote) < prototype(Neos.Neos:Content) {
-}
+prototype(RobertLemke.Plugin.Blog:Quote) < prototype(Neos.Neos:Content)
