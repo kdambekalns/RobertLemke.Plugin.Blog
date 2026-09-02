@@ -17,8 +17,11 @@ use Neos\ContentRepository\Domain\Model\NodeInterface;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Log\ThrowableStorageInterface;
 use Neos\Flow\Log\Utility\LogEnvironment;
-use Neos\SwiftMailer\Message;
+use Neos\Flow\ObjectManagement\ObjectManagerInterface;
+use Neos\SymfonyMailer\Service\MailerService;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Mime\Address;
+use Symfony\Component\Mime\Email;
 
 /**
  * A notification service
@@ -27,27 +30,17 @@ use Psr\Log\LoggerInterface;
  */
 class NotificationService
 {
-    /**
-     * @var array
-     */
-    protected $settings;
+    protected array $settings = [];
 
-    /**
-     * @Flow\Inject
-     * @var ThrowableStorageInterface
-     */
-    protected $throwableStorage;
+    #[Flow\Inject]
+    protected ThrowableStorageInterface $throwableStorage;
 
-    /**
-     * @Flow\Inject
-     * @var LoggerInterface
-     */
-    protected $logger;
+    #[Flow\Inject]
+    protected LoggerInterface $logger;
 
-    /**
-     * @param array $settings
-     * @return void
-     */
+    #[Flow\Inject]
+    protected ObjectManagerInterface $objectManager;
+
     public function injectSettings(array $settings): void
     {
         $this->settings = $settings;
@@ -56,9 +49,6 @@ class NotificationService
     /**
      * Send a new notification that a comment has been created
      *
-     * @param NodeInterface $commentNode The comment node
-     * @param NodeInterface $postNode The post node
-     * @return void
      */
     public function sendNewCommentNotification(NodeInterface $commentNode, NodeInterface $postNode): void
     {
@@ -66,24 +56,30 @@ class NotificationService
             return;
         }
 
-        if (!class_exists(Message::class)) {
-            $this->logger->info('The package "Neos.SwiftMailer" is required to send notifications!', LogEnvironment::fromMethodName(__METHOD__));
+        if (!class_exists(MailerService::class)) {
+            $this->logger->info('The package "neos/symfonymailer" is required to send notifications!', LogEnvironment::fromMethodName(__METHOD__));
 
             return;
         }
 
+        $mail = new Email();
         try {
-            $mail = new Message();
             $mail
-                ->setFrom([$this->settings['notifications']['to']['email'] => $this->settings['notifications']['to']['name']])
-                ->setReplyTo([$commentNode->getProperty('emailAddress') => $commentNode->getProperty('author')])
-                ->setTo([$this->settings['notifications']['to']['email'] => $this->settings['notifications']['to']['name']])
-                ->setSubject('New comment on blog post "' . $postNode->getProperty('title') . '"' . ($commentNode->getProperty('spam') ? ' (SPAM)' : ''))
-                ->setBody($commentNode->getProperty('text'))
-                ->send();
+                ->addFrom(new Address($this->settings['notifications']['to']['email'], $this->settings['notifications']['to']['name']))
+                ->addReplyTo(new Address($commentNode->getProperty('emailAddress'), $commentNode->getProperty('author')))
+                ->subject('New comment on blog post "' . $postNode->getProperty('title') . '"' . ($commentNode->getProperty('spam') ? ' (SPAM)' : ''))
+                ->addTo(new Address($this->settings['notifications']['to']['email'], $this->settings['notifications']['to']['name']))
+                ->text($commentNode->getProperty('text'));
+
+            $this->getMailerService()->getMailer()->send($mail);
         } catch (\Exception $e) {
             $message = $this->throwableStorage->logThrowable($e);
             $this->logger->error($message, LogEnvironment::fromMethodName(__METHOD__));
         }
+    }
+
+    private function getMailerService(): MailerService
+    {
+        return $this->objectManager->get(MailerService::class);
     }
 }
